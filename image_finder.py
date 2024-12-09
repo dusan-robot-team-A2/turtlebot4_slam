@@ -37,9 +37,11 @@ class Yolov2349865:
         for img1, img2 in zip(image1, image2):
             ratio1 = False
             ratio2 = False
-
+            keypoints_coords3 = np.array([keypoint.pt for keypoint in keypoints3])
             keypoint1, descriptor1 = self.sift.detectAndCompute(img1, None)
             keypoint2, descriptor2 = self.sift.detectAndCompute(img2, None)
+            keypoints_coords2 = np.array([keypoint.pt for keypoint in keypoint2])
+            keypoints_coords1 = np.array([keypoint.pt for keypoint in keypoint1])
 
             if descriptors3 is not None:
                 descriptor1 = np.float32(descriptor1)
@@ -78,23 +80,25 @@ class Yolov2349865:
                     if max(similarity_ratio1, similarity_ratio2) == similarity_ratio1:
                         cv2.imshow('', img3)
                         cv2.waitKey(1)
-                        return print('first image')
+                        return 1, keypoints_coords1, keypoints_coords3
                     else:
                         cv2.imshow('', img4)
                         cv2.waitKey(1)
-                        return print('second image')
+                        return 2, keypoints_coords2, keypoints_coords3
                 elif ratio1 == True and ratio2 == False:
                     cv2.imshow('', img3)
                     cv2.waitKey(1)
-                    return print('first image')
+                    return 1, keypoints_coords1, keypoints_coords3
                 elif ratio2 == True and ratio1 == False:
                     cv2.imshow('', img4)
                     cv2.waitKey(1)
-                    return print('second image')
+                    return 2, keypoints_coords2, keypoints_coords3
                 else:
                     cv2.imshow('', frame)
                     cv2.waitKey(1)
-                    return print('not found')
+                    return 0
+            else:
+                return 0
 
 
 def main():
