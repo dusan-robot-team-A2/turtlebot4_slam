@@ -86,7 +86,11 @@ class FrontierExplorationNode(Node):
             image_num, pose_3D, pose_2D = res
             if image_num is not 0:
                 R, tvec = self.pnp.img_matrices(pose_3D, pose_2D)
-                print(R, tvec)
+                print("find image")
+                print(tvec)
+                coor = self.transform_camera_to_map(tvec[0], tvec[1], tvec[2])
+                self.delete_marker(image_num)
+                self.publish_marker(coor.point.x, coor.point.y, image_num)
             
 
     def odom_callback(self, msg):

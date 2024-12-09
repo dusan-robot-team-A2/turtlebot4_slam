@@ -66,69 +66,45 @@ class Yolov2349865:
                 img4 = cv2.drawMatches(img2,keypoint2,frame,keypoints3,matches2[:10],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
                 
                 # 유사도 판단 기준 (threshold 조정 가능)
-                threshold = 0.7  # 예: 매칭된 특징점이 전체 특징점의 70% 이상일 때 같은 이미지로 판단
-                try:
-                    similarity_ratio1 = good_matches1 / (total_matches1 - 35)
-                    print(similarity_ratio1)
-                    similarity_ratio2 = good_matches2 / total_matches2
-                    print(similarity_ratio2)
-                    if similarity_ratio1 >= threshold:
-                        ratio1 = True
-                    if similarity_ratio2 >= threshold:
-                        ratio2 = True
-                    
-                    if ratio1 and ratio2 == True:
-                        if max(similarity_ratio1, similarity_ratio2) == similarity_ratio1:
-                            cv2.imshow('', img3)
-                            cv2.waitKey(1)
-                            return 1, keypoints_coords1, keypoints_coords3
-                        else:
-                            cv2.imshow('', img4)
-                            cv2.waitKey(1)
-                            return 2, keypoints_coords2, keypoints_coords3
-                    elif ratio1 == True and ratio2 == False:
+                threshold = 0.6  # 예: 매칭된 특징점이 전체 특징점의 70% 이상일 때 같은 이미지로 판단
+                similarity_ratio1 = good_matches1 / (total_matches1 + 10)
+                print(similarity_ratio1)
+                similarity_ratio2 = good_matches2 / (total_matches2 + 35)
+                print(similarity_ratio2)
+                if similarity_ratio1 >= threshold:
+                    ratio1 = True
+                if similarity_ratio2 >= threshold:
+                    ratio2 = True
+                
+                if ratio1 and ratio2 == True:
+                    if max(similarity_ratio1, similarity_ratio2) == similarity_ratio1:
                         cv2.imshow('', img3)
                         cv2.waitKey(1)
+                        print('first image')
                         return 1, keypoints_coords1, keypoints_coords3
-                    elif ratio2 == True and ratio1 == False:
+                    else:
                         cv2.imshow('', img4)
                         cv2.waitKey(1)
+                        print('second image')
                         return 2, keypoints_coords2, keypoints_coords3
-                    else:
-                        cv2.imshow('', frame)
-                        cv2.waitKey(1)
-                        return 0, 0, 0
-                except:
-                    similarity_ratio1 = good_matches1 / (total_matches1 - 34)
-                    print(similarity_ratio1)
-                    similarity_ratio2 = good_matches2 / total_matches2
-                    print(similarity_ratio2)
-                    if similarity_ratio1 >= threshold:
-                        ratio1 = True
-                    if similarity_ratio2 >= threshold:
-                        ratio2 = True
-                    
-                    if ratio1 and ratio2 == True:
-                        if max(similarity_ratio1, similarity_ratio2) == similarity_ratio1:
-                            cv2.imshow('', img3)
-                            cv2.waitKey(1)
-                            return 1, keypoints_coords1, keypoints_coords3
-                        else:
-                            cv2.imshow('', img4)
-                            cv2.waitKey(1)
-                            return 2, keypoints_coords2, keypoints_coords3
-                    elif ratio1 == True and ratio2 == False:
-                        cv2.imshow('', img3)
-                        cv2.waitKey(1)
-                        return 1, keypoints_coords1, keypoints_coords3
-                    elif ratio2 == True and ratio1 == False:
-                        cv2.imshow('', img4)
-                        cv2.waitKey(1)
-                        return 2, keypoints_coords2, keypoints_coords3
-                    else:
-                        cv2.imshow('', frame)
-                        cv2.waitKey(1)
-                        return 0, 0, 0
+                elif ratio1 == True and ratio2 == False:
+                    cv2.imshow('', img3)
+                    cv2.waitKey(1)
+                    print('first image')
+                    return 1, keypoints_coords1, keypoints_coords3
+                elif ratio2 == True and ratio1 == False:
+                    cv2.imshow('', img4)
+                    cv2.waitKey(1)
+                    print('second image')
+                    return 2, keypoints_coords2, keypoints_coords3
+                else:
+                    cv2.imshow('', frame)
+                    cv2.waitKey(1)
+                    print('not found image')
+                    return 0, 0, 0
+            else:
+                return 0, 0, 0
+                
             
 
 def main():
