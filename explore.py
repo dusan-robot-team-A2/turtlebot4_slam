@@ -14,13 +14,27 @@ from visualization_msgs.msg import Marker
 import numpy as np
 import math
 import random
+from sensor_msgs.msg import CompressedImage
+from cv_bridge import CvBridge
+from image_finder import Yolov2349865
+from get_pose_pnp import GetPosePnp
 
 class FrontierExplorationNode(Node):
-    def __init__(self):
+    def __init__(self, yolo, pnp):
         super().__init__('frontier_exploration_node')
         
         # Subscribing to the map topic
         self.map_subscriber = self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
+
+        self.image_subscriber = self.create_subscription(CompressedImage,
+            '/oakd/rgb/preview/image_raw/compressed',
+            self.image_callback,
+            10
+        )
+        self.bridge = CvBridge()
+        self.yolo = yolo
+        self.pnp = pnp
+        self.image_subscriber
         
         # # Subscribing to goal status updates
         # self.goal_status_subscriber = self.create_subscription(
@@ -54,6 +68,14 @@ class FrontierExplorationNode(Node):
         self.map_data = msg.data
         self.map_array = np.array(msg.data).reshape((msg.info.height, msg.info.width))
         self.map_metadata = msg.info
+
+    def image_callback(self, image):
+        frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8')
+        image_num, pose_3D, pose_2D = self.yolo.image_resize(frame)
+        if image_num is not 0:
+            translation_matrix = self.pnp.img_matrices(pose_3D, pose_2D)
+            print(translation_matrix)
+            
 
     def odom_callback(self, msg):
         """Callback to update the robot's current position based on odometry data."""
@@ -206,7 +228,9 @@ class FrontierExplorationNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = FrontierExplorationNode()
+    pnp = GetPosePnp()
+    yolo = Yolov2349865()
+    node = FrontierExplorationNode(yolo, pnp)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
