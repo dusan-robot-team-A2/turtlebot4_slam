@@ -96,9 +96,9 @@ class Yolov2349865:
                 else:
                     cv2.imshow('', frame)
                     cv2.waitKey(1)
-                    return 0
+                    return 0, 0, 0
             else:
-                return 0
+                return 0, 0, 0
 
 
 def main():
