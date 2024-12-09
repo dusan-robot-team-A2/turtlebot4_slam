@@ -43,7 +43,7 @@ class Yolov2349865:
             keypoints_coords2 = np.array([keypoint.pt for keypoint in keypoint2])
             keypoints_coords1 = np.array([keypoint.pt for keypoint in keypoint1])
 
-            if descriptors3 is not None:
+            if descriptors3 is not None and len(keypoints3) > 80:
                 descriptor1 = np.float32(descriptor1)
                 descriptor2 = np.float32(descriptor2)
                 descriptors3 = np.float32(descriptors3)
@@ -66,7 +66,7 @@ class Yolov2349865:
                 img4 = cv2.drawMatches(img2,keypoint2,frame,keypoints3,matches2[:10],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
                 
                 # 유사도 판단 기준 (threshold 조정 가능)
-                threshold = 0.6  # 예: 매칭된 특징점이 전체 특징점의 70% 이상일 때 같은 이미지로 판단
+                threshold = 0.5  # 예: 매칭된 특징점이 전체 특징점의 50% 이상일 때 같은 이미지로 판단
                 similarity_ratio1 = good_matches1 / (total_matches1 + 10)
                 print(similarity_ratio1)
                 similarity_ratio2 = good_matches2 / (total_matches2 + 35)

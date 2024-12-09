@@ -10,7 +10,7 @@ from action_msgs.msg import GoalStatusArray
 from turtlebot4_navigation.turtlebot4_navigator import TurtleBot4Directions, TurtleBot4Navigator
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 import numpy as np
 import math
 import random
@@ -48,7 +48,8 @@ class FrontierExplorationNode(Node):
         self.timer = self.create_timer(5.0, self.timer_callback)
 
         self.action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
-        self.marker_publisher = self.create_publisher(Marker, '/visualization_marker', 10)
+        # self.marker_publisher = self.create_publisher(Marker, '/visualization_marker', 10)
+        self.marker_array_publisher = self.create_publisher(MarkerArray, '/visualization_marker_array', 10)
         
         # Initial states
         self.map_data = None
@@ -66,13 +67,14 @@ class FrontierExplorationNode(Node):
         self.bridge = CvBridge()
         self.yolo = yolo
         self.pnp = pnp
-        self.timer2 = self.create_timer(1.0, self.image_callback)
+        self.lastest_image = None
+        self.timer2 = self.create_timer(0.1, self.image_callback)
+
+        self.object_a_marker= None
+        self.object_b_marker = None
 
     def callback(self, image):
         self.lastest_image = image
-
-        self.object_a_id= None
-        self.object_b_id = None
 
     def map_callback(self, msg):
         """Callback to process the incoming map data."""
@@ -81,19 +83,28 @@ class FrontierExplorationNode(Node):
         self.map_metadata = msg.info
 
     def image_callback(self):
-        frame = self.bridge.compressed_imgmsg_to_cv2(self.lastest_image, desired_encoding='bgr8')
-        res = self.yolo.image_resize(frame)
-        if res is not None:
-            image_num, pose_3D, pose_2D = res
-            if image_num is not 0:
-                R, tvec = self.pnp.img_matrices(pose_3D, pose_2D)
-                print("find image")
-                print(tvec)
-                coor = self.transform_camera_to_map(tvec[0], tvec[1], tvec[2])
-                self.delete_marker(image_num)
-                self.publish_marker(coor.point.x, coor.point.y, image_num)
+        if self.lastest_image is not None:
+            frame = self.bridge.compressed_imgmsg_to_cv2(self.lastest_image, desired_encoding='bgr8')
+            res = self.yolo.image_resize(frame)
+            if res is not None:
+                image_num, pose_3D, pose_2D = res
+                if image_num is not 0:
+                    R, tvec = self.pnp.img_matrices(pose_3D, pose_2D)
+                    print("find image")
+                    coor = self.transform_camera_to_map(tvec[0], tvec[1], tvec[2])
+                    self.delete_marker(image_num)
+                    
+                    if image_num == 1:
+                        self.object_a_marker = self.publish_marker(coor.point.x, coor.point.y, image_num)
+                    
+                    elif image_num == 2:
+                        self.object_b_marker = self.publish_marker(coor.point.x, coor.point.y, image_num)
+                    
+                    self.publish_markers()
+                    print(f'{image_num}num coor x:{coor.point.x} y:{coor.point.y}')
             
 
+            
     def odom_callback(self, msg):
         """Callback to update the robot's current position based on odometry data."""
         self.robot_x = msg.pose.pose.position.x
@@ -221,17 +232,28 @@ class FrontierExplorationNode(Node):
         marker.id = id
         marker.type = Marker.SPHERE  # 동그란 마커로 설정
         marker.action = Marker.ADD
-        marker.pose.position = Point(x=x, y=y, z=0.0)  # 위치 설정
+        marker.pose.position = Point(x=x, y=y, z=5.0)  # 위치 설정
         marker.pose.orientation.w = 1.0  # 회전 정보 (회전하지 않도록 설정)
-        marker.scale.x = 0.5  # 구의 크기 설정
-        marker.scale.y = 0.5
-        marker.scale.z = 0.5
+        marker.scale.x = 10  # 구의 크기 설정
+        marker.scale.y = 10
+        marker.scale.z = 10
         marker.color.a = 1.0  # 불투명도
         marker.color.r = 1.0  # 색상 (빨간색)
         marker.color.g = 0.0
         marker.color.b = 0.0
 
-        self.marker_publisher.publish(marker)
+        return marker
+
+    def publish_markers(self):
+        markers = MarkerArray()
+
+        if self.object_b_marker:
+            markers.markers.append(self.object_b_marker)
+        
+        if self.object_a_marker:
+            markers.markers.append(self.object_a_marker)
+        
+        self.marker_array_publisher(markers)
 
     
     def delete_marker(self, id):
