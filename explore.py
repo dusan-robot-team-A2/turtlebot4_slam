@@ -130,7 +130,7 @@ class FrontierExplorationNode(Node):
     def select_goal(self, frontiers):
         """Select a random valid frontier as the new goal."""
         valid_frontiers = [
-            (x, y) for x, y in frontiers if not self.is_near_wall(x, y, threshold=3)
+            (x, y) for x, y in frontiers if not self.is_near_wall(x, y, threshold=1.5)
         ]
         if valid_frontiers:
             chosen_frontier = random.choice(valid_frontiers)
