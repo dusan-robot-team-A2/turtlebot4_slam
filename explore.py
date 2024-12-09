@@ -25,16 +25,6 @@ class FrontierExplorationNode(Node):
         
         # Subscribing to the map topic
         self.map_subscriber = self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
-
-        self.image_subscriber = self.create_subscription(CompressedImage,
-            '/oakd/rgb/preview/image_raw/compressed',
-            self.image_callback,
-            10
-        )
-        self.bridge = CvBridge()
-        self.yolo = yolo
-        self.pnp = pnp
-        self.image_subscriber
         
         # # Subscribing to goal status updates
         # self.goal_status_subscriber = self.create_subscription(
@@ -63,6 +53,16 @@ class FrontierExplorationNode(Node):
         self.robot_x = 0.0
         self.robot_y = 0.0
 
+        self.image_subscriber = self.create_subscription(CompressedImage,
+            '/oakd/rgb/preview/image_raw/compressed',
+            self.image_callback,
+            10
+        )
+        self.bridge = CvBridge()
+        self.yolo = yolo
+        self.pnp = pnp
+        self.image_subscriber
+
     def map_callback(self, msg):
         """Callback to process the incoming map data."""
         self.map_data = msg.data
@@ -71,10 +71,12 @@ class FrontierExplorationNode(Node):
 
     def image_callback(self, image):
         frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8')
-        image_num, pose_3D, pose_2D = self.yolo.image_resize(frame)
-        if image_num is not 0:
-            translation_matrix = self.pnp.img_matrices(pose_3D, pose_2D)
-            print(translation_matrix)
+        # res = self.yolo.image_resize(frame)
+        # if res is not None:
+        #     image_num, pose_3D, pose_2D = res
+        #     if image_num is not 0:
+        #         translation_matrix = self.pnp.img_matrices(pose_3D, pose_2D)
+        #         print(translation_matrix)
             
 
     def odom_callback(self, msg):
