@@ -55,13 +55,16 @@ class FrontierExplorationNode(Node):
 
         self.image_subscriber = self.create_subscription(CompressedImage,
             '/oakd/rgb/preview/image_raw/compressed',
-            self.image_callback,
+            self.callback,
             10
         )
         self.bridge = CvBridge()
         self.yolo = yolo
         self.pnp = pnp
-        self.image_subscriber
+        self.timer2 = self.create_timer(1.0, self.image_callback)
+
+    def callback(self, image):
+        self.lastest_image = image
 
     def map_callback(self, msg):
         """Callback to process the incoming map data."""
@@ -69,14 +72,14 @@ class FrontierExplorationNode(Node):
         self.map_array = np.array(msg.data).reshape((msg.info.height, msg.info.width))
         self.map_metadata = msg.info
 
-    def image_callback(self, image):
-        frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8')
-        # res = self.yolo.image_resize(frame)
-        # if res is not None:
-        #     image_num, pose_3D, pose_2D = res
-        #     if image_num is not 0:
-        #         translation_matrix = self.pnp.img_matrices(pose_3D, pose_2D)
-        #         print(translation_matrix)
+    def image_callback(self):
+        frame = self.bridge.compressed_imgmsg_to_cv2(self.lastest_image, desired_encoding='bgr8')
+        res = self.yolo.image_resize(frame)
+        if res is not None:
+            image_num, pose_3D, pose_2D = res
+            if image_num is not 0:
+                R, tvec = self.pnp.img_matrices(pose_3D, pose_2D)
+                print(R, tvec)
             
 
     def odom_callback(self, msg):
@@ -130,7 +133,7 @@ class FrontierExplorationNode(Node):
     def select_goal(self, frontiers):
         """Select a random valid frontier as the new goal."""
         valid_frontiers = [
-            (x, y) for x, y in frontiers if not self.is_near_wall(x, y, threshold=1.5)
+            (x, y) for x, y in frontiers if not self.is_near_wall(x, y, threshold=1)
         ]
         if valid_frontiers:
             chosen_frontier = random.choice(valid_frontiers)
