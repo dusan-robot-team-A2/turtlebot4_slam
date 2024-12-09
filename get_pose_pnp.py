@@ -74,27 +74,8 @@ class GetPosePnp():
         success, rvec, tvec, inliers = cv2.solvePnPRansac(objectPoints, imagePoints, camera_intrinsics_matrix, distortion_coeffs)
 
         if success:
-            # 카메라 좌표계에서 물체의 방향
-            R, _ = cv2.Rodrigues(rvec)
-            # 카메라 좌표기준 물체의 위치
-            translation_matrix = np.eye(4)  # 4x4 단위 행렬 생성
-            translation_matrix[:3, :3] = R  # 회전 행렬 삽입
-            translation_matrix[:3, 3] = tvec.flatten()  # 변환 벡터 삽입
-
-            # # 카메라의 위치(글로벌좌표)
-            # R_inv = np.linalg.inv(R)  # 회전 행렬의 역행렬
-            # camera_position = -R_inv @ tvec  # 카메라의 위치
-            
-            # 카메라와 물체 간의 거리 (카메라 위치에서 물체까지의 거리)
-            distance = np.linalg.norm(tvec) * 100  # tvec의 크기(센티미터)
-            
-            print(f"카메라 좌표계 기준 물체의 translation matrix\n:{translation_matrix}")
-            # self.get_logger().info(f"카메라와 물체 간의 거리: {distance} 센티미터")
-            # self.get_logger().info(f"카메라의 방향: {R}")
-
-            # distance는 3D 글로벌좌표에서의 카메라와 물체간의 거리
-            # R 은 3D 카메라좌표에서 물체까지의 방향
-            return translation_matrix
+            # tvec 카메라 좌표계기준 물체의 중심점의 위치
+            return tvec
         else:
             print("PnP 실패")
-            return
+            return None
