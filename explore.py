@@ -5,7 +5,7 @@
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid, MapMetaData, Odometry
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped, Point, PointStamped
 from action_msgs.msg import GoalStatusArray
 from turtlebot4_navigation.turtlebot4_navigator import TurtleBot4Directions, TurtleBot4Navigator
 from nav2_msgs.action import NavigateToPose
@@ -18,11 +18,15 @@ from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
 from image_finder import Yolov2349865
 from get_pose_pnp import GetPosePnp
+import tf2_ros
 
 class FrontierExplorationNode(Node):
     def __init__(self, yolo, pnp):
         super().__init__('frontier_exploration_node')
         
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+
         # Subscribing to the map topic
         self.map_subscriber = self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
         
@@ -43,7 +47,7 @@ class FrontierExplorationNode(Node):
         self.timer = self.create_timer(5.0, self.timer_callback)
 
         self.action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
-        self.publisher = self.create_publisher(Marker, '/visualization_marker', 10)
+        self.marker_publisher = self.create_publisher(Marker, '/visualization_marker', 10)
         
         # Initial states
         self.map_data = None
@@ -62,6 +66,9 @@ class FrontierExplorationNode(Node):
         self.yolo = yolo
         self.pnp = pnp
         self.image_subscriber
+
+        self.object_a_id= None
+        self.object_b_id = None
 
     def map_callback(self, msg):
         """Callback to process the incoming map data."""
@@ -198,35 +205,55 @@ class FrontierExplorationNode(Node):
         
         self.goal_reached = True
 
-    def publish_frontier_marker(self,frontiers):
-        id = 0
-        for frontier in frontiers:
-            marker = Marker()
-            marker.header.frame_id = "map"  # 기준 프레임 (맵 상에서 표시)
-            marker.header.stamp = self.get_clock().now().to_msg()
-            marker.ns = "circle_marker"
-            marker.id = id
-            id += 1
-            marker.type = Marker.SPHERE  # 동그라미 마커 타입
-            marker.action = Marker.ADD
+    def publish_marker(self, x,y, id):
+        marker = Marker()
+        marker.header.frame_id = "map"  # 마커의 프레임 설정
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = "point"
+        marker.id = id
+        marker.type = Marker.SPHERE  # 동그란 마커로 설정
+        marker.action = Marker.ADD
+        marker.pose.position = Point(x=x, y=y, z=0.0)  # 위치 설정
+        marker.pose.orientation.w = 1.0  # 회전 정보 (회전하지 않도록 설정)
+        marker.scale.x = 0.5  # 구의 크기 설정
+        marker.scale.y = 0.5
+        marker.scale.z = 0.5
+        marker.color.a = 1.0  # 불투명도
+        marker.color.r = 1.0  # 색상 (빨간색)
+        marker.color.g = 0.0
+        marker.color.b = 0.0
 
-            # 동그라미 위치 설정
-            marker.pose.position.x = frontier[0]
-            marker.pose.position.y = frontier[1]  
-            marker.pose.position.z = 0.0  
+        self.marker_publisher.publish(marker)
 
-            # 동그라미 크기 (반지름)
-            marker.scale.x = 1.0  # x 방향 크기
-            marker.scale.y = 1.0  # y 방향 크기
-            marker.scale.z = 0.01  # z 방향 크기 (얇게 만들어 평면에 보이게 설정)
+    
+    def delete_marker(self, id):
+        marker_delete = Marker()
+        marker_delete.header.frame_id = "map"
+        marker_delete.header.stamp = self.get_clock().now().to_msg()
+        marker_delete.ns = "point"
+        marker_delete.id = id
+        marker_delete.action = Marker.DELETE  # 삭제할 때는 DELETE로 설정
+        
+        self.marker_publisher.publish(marker_delete)
 
-            # 색상 설정
-            marker.color.r = 0.0  # 빨간색 비율
-            marker.color.g = 1.0  # 초록색 비율
-            marker.color.b = 0.0  # 파란색 비율
-            marker.color.a = 1.0  # 투명도 (1.0은 불투명)
+    def transform_camera_to_map(self, x, y, z):
+        transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
 
-            self.publisher.publish(marker) 
+        point = PointStamped()
+        point.header.frame_id = 'base_link'
+        point.point.x = x
+        point.point.y = y
+        point.point.z = z
+
+        transformed_point = self.tf_buffer.transform(point, 'map')
+
+        return transformed_point
+
+
+        
+
+
+
 
 def main(args=None):
     rclpy.init(args=args)
