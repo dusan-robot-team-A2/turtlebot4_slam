@@ -19,6 +19,7 @@ from cv_bridge import CvBridge
 from image_finder import Yolov2349865
 from get_pose_pnp import GetPosePnp
 import tf2_ros
+import numpy as np
 
 class FrontierExplorationNode(Node):
     def __init__(self, yolo, pnp):
@@ -240,15 +241,26 @@ class FrontierExplorationNode(Node):
         self.marker_publisher.publish(marker_delete)
 
     def transform_camera_to_map(self, x, y, z):
+        R = np.array([
+            [0, 0, 1], 
+            [-1, 0, 0], 
+            [0, -1, 0]  
+        ])
+
+        original_coords = np.array([x, y, z])
+
+        # 좌표 변환 수행
+        transformed_coords = np.dot(R, original_coords)
         transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
 
         point = PointStamped()
         point.header.frame_id = 'base_link'
-        point.point.x = x
-        point.point.y = y
-        point.point.z = z
+        point.point.x = transformed_coords[0]
+        point.point.y = transformed_coords[1]
+        point.point.z = transformed_coords[2]
 
         transformed_point = self.tf_buffer.transform(point, 'map')
+        
 
         return transformed_point
 
