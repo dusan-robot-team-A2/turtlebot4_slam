@@ -30,16 +30,6 @@ class FrontierExplorationNode(Node):
 
         # Subscribing to the map topic
         self.map_subscriber = self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
-
-        self.image_subscriber = self.create_subscription(CompressedImage,
-            '/oakd/rgb/preview/image_raw/compressed',
-            self.image_callback,
-            10
-        )
-        self.bridge = CvBridge()
-        self.yolo = yolo
-        self.pnp = pnp
-        self.image_subscriber
         
         # # Subscribing to goal status updates
         # self.goal_status_subscriber = self.create_subscription(
@@ -68,6 +58,19 @@ class FrontierExplorationNode(Node):
         self.robot_x = 0.0
         self.robot_y = 0.0
 
+        self.image_subscriber = self.create_subscription(CompressedImage,
+            '/oakd/rgb/preview/image_raw/compressed',
+            self.callback,
+            10
+        )
+        self.bridge = CvBridge()
+        self.yolo = yolo
+        self.pnp = pnp
+        self.timer2 = self.create_timer(1.0, self.image_callback)
+
+    def callback(self, image):
+        self.lastest_image = image
+
         self.object_a_id= None
         self.object_b_id = None
 
@@ -77,12 +80,18 @@ class FrontierExplorationNode(Node):
         self.map_array = np.array(msg.data).reshape((msg.info.height, msg.info.width))
         self.map_metadata = msg.info
 
-    def image_callback(self, image):
-        frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8')
-        image_num, pose_3D, pose_2D = self.yolo.image_resize(frame)
-        if image_num is not 0:
-            translation_matrix = self.pnp.img_matrices(pose_3D, pose_2D)
-            print(translation_matrix)
+    def image_callback(self):
+        frame = self.bridge.compressed_imgmsg_to_cv2(self.lastest_image, desired_encoding='bgr8')
+        res = self.yolo.image_resize(frame)
+        if res is not None:
+            image_num, pose_3D, pose_2D = res
+            if image_num is not 0:
+                R, tvec = self.pnp.img_matrices(pose_3D, pose_2D)
+                print("find image")
+                print(tvec)
+                coor = self.transform_camera_to_map(tvec[0], tvec[1], tvec[2])
+                self.delete_marker(image_num)
+                self.publish_marker(coor.point.x, coor.point.y, image_num)
             
 
     def odom_callback(self, msg):
@@ -136,7 +145,7 @@ class FrontierExplorationNode(Node):
     def select_goal(self, frontiers):
         """Select a random valid frontier as the new goal."""
         valid_frontiers = [
-            (x, y) for x, y in frontiers if not self.is_near_wall(x, y, threshold=3)
+            (x, y) for x, y in frontiers if not self.is_near_wall(x, y, threshold=1)
         ]
         if valid_frontiers:
             chosen_frontier = random.choice(valid_frontiers)
