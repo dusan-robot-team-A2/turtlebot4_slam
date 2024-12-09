@@ -78,6 +78,10 @@ class GetPosePnp():
             # R 은 월드좌표계 기준 카메라 좌표계의 회전 행렬
             # tvec 카메라 좌표계기준 물체의 중심점의 위치
             return R, tvec
+            
+            # rotated_tvec은 월드좌표계 기준 물체의 중심점의 위치
+            rotated_tvec = np.dot(R, tvec)
+            return rotated_tvec
         else:
             print("PnP 실패")
             return None
