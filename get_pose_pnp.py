@@ -74,8 +74,10 @@ class GetPosePnp():
         success, rvec, tvec, inliers = cv2.solvePnPRansac(objectPoints, imagePoints, camera_intrinsics_matrix, distortion_coeffs)
 
         if success:
+            R, _ = cv2.Rodrigues(rvec)
+            # R 은 월드좌표계 기준 카메라 좌표계의 회전 행렬
             # tvec 카메라 좌표계기준 물체의 중심점의 위치
-            return tvec
+            return R, tvec
         else:
             print("PnP 실패")
             return None
